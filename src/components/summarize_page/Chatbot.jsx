@@ -48,7 +48,7 @@ const VideoSection = () => {
           }}
         >
           {/* Replace this with the dynamic URL provided by your backend */}
-          <source src={url + "media/videos/video.mp4"} type="video/mp4" />
+          <source src={url + "media/cropped.mp4"} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
       </div>
@@ -56,12 +56,13 @@ const VideoSection = () => {
   );
 };
 
-const SummarySection = () => {
+const SummarySection = ({ summary, setSummary }) => {
   const [youtubeLink, setYouTubeLink] = useState("");
-  const [summary, setSummary] = useState("");
   const [videoUrl, setVideoUrl] = useState("media/videos/video.mp4");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [timeSummary, setTimeSummary] = useState("");
+
 
   useEffect(() => {
     const storedLink = localStorage.getItem("youtubeLink");
@@ -81,9 +82,19 @@ const SummarySection = () => {
       const response = await axios.post(url + "api/submit-link", {
         video_link: link, // Payload for the API
       });
+
       // Extract data from response
       setSummary(response.data.summary);
-      setVideoUrl(response.data["video-url"]);
+      setTimeSummary(response.data["time-summary"]);
+
+      
+      console.log("**************************************************************************************************",response.data["time-summary"])
+      // Make another API call using time-summary
+      const videoResponse = await axios.post(url + "api/generate_video", {
+        "time-summary": response.data["time-summary"], // Pass the time-summary
+      });
+      // Extract video URL
+      setVideoUrl(videoResponse.data["video-url"]);
     } catch (err) {
       console.error("API call failed:", err);
       setError("Failed to fetch data. Please try again later.");
@@ -91,6 +102,7 @@ const SummarySection = () => {
       setLoading(false); // Hide loading spinner
     }
   };
+
 
   return (
     <div className="summary-section">
@@ -104,7 +116,7 @@ const SummarySection = () => {
   );
 };
 
-const ChatBotSection = () => {
+const ChatBotSection = ({ summary }) => {
   const [userInput, setUserInput] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -148,6 +160,7 @@ const ChatBotSection = () => {
     setUserInput("");
 
     try {
+      console.log("This is summary",summary)
       const response = await axios.post(url + "api/chatbot/", {
         summary: summary,
         context: messages.map((msg) => `User: ${msg.message}\n`).join(""),
@@ -203,16 +216,18 @@ const ChatBotSection = () => {
 };
 
 function Chatbot() {
+  const [summary, setSummary] = useState(""); // Lift state to Chatbot component
+
   return (
     <div className="chatbot">
       <Header />
       <div className="chatbot-main-content">
         <div className="chatbot-left-section">
           <VideoSection />
-          <SummarySection />
+          <SummarySection summary={summary} setSummary={setSummary} />
         </div>
         <div className="chatbot-right-section">
-          <ChatBotSection />
+          <ChatBotSection summary={summary} />
         </div>
       </div>
     </div>
